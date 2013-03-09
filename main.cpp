@@ -4,8 +4,8 @@
 #include <allegro5/allegro_native_dialog.h>
 #include <allegro5/allegro_primitives.h>
 
-#define ScreenHeight 360
-#define ScreenWidth 480
+#define ScreenHeight 600
+#define ScreenWidth 900
 #define WindowName "teste"
 
 #define point_n 6
@@ -44,46 +44,23 @@ void dc_iteration(Point* control,float t, int npoints, std::vector<Point> *curve
     }
 }
 
-int main()
+inline void error_msg(const char *s)
 {
-    int npoints = point_n;
-    int cpoints = point_n;
-    int curvepoints = 0;
-    Point control[] = {Point(100,100),Point(150,170),Point(80,200),Point(70,250),Point(120,230),Point(170,200)};
-    Point ccont[point_n];
-    ALLEGRO_DISPLAY *display;
-    ALLEGRO_EVENT_QUEUE *events;
+    al_show_native_message_box(NULL, NULL, "Error", s, NULL, ALLEGRO_MESSAGEBOX_ERROR);
+}
 
+void draw_curve(float step, Point *control, int points)
+{
+    int npoints = points;
+    int curvepoints = 0;
+    Point *ccont = new Point[points];
     std::vector<Point> *curve = new vector<Point>;
 
-    if(!al_init()) {
-        al_show_native_message_box(NULL, NULL, "Error", "Could not initialize Allegro 5", NULL, ALLEGRO_MESSAGEBOX_ERROR);
-        return -1;
-    }
-
-    events = al_create_event_queue();
-    if(!events) {
-       al_show_native_message_box(NULL, NULL, "Error", "Failed to create event_queue.\n", NULL, ALLEGRO_MESSAGEBOX_ERROR);
-       return -1;
-    }
-
-    display = al_create_display(ScreenWidth, ScreenHeight);
-    if(!display) {
-        al_show_native_message_box(NULL, NULL,  "Error", "Failed to create display.\n", NULL, ALLEGRO_MESSAGEBOX_ERROR);
-    }
-    al_init_primitives_addon();
-
-
-    al_set_new_display_flags(ALLEGRO_NOFRAME);
-    al_set_window_position(display, 200, 100);
-    al_set_window_title(display, WindowName);
-
     for( float t = 0.0; t <= 1; t+=0.01) {
-        for( int i = 0; i < cpoints; i++ )
+        for( int i = 0; i < points; i++ )
             al_draw_filled_circle(control[i].x,control[i].y,4.0,white);
-        for(int i = 0; i < npoints; i++ ) {
+        for(int i = 0; i < points; i++ )
             ccont[i] = control[i];
-        }
         for( int i = 0; npoints > 1; i++, npoints--) {
             dc_iteration(ccont,t,npoints,curve);
         }
@@ -96,12 +73,78 @@ int main()
         al_flip_display();
         al_rest(0.1);
         al_clear_to_color(black);
-        npoints = point_n;
+        npoints = points;
     }
 
-    al_rest(2.0);
-    al_destroy_event_queue(events);
-    al_destroy_display(display);
+    delete[] ccont;
+    delete curve;
+}
 
+int initialize(ALLEGRO_DISPLAY *&d, ALLEGRO_EVENT_QUEUE *&e)
+{
+    if(!al_init()) {
+        error_msg("Could not initialize Allegro 5.\n");
+        return 1;
+    }
+
+    e = al_create_event_queue();
+    if(!e) {
+       error_msg("Failed to create event queue.\n");
+       return 2;
+    }
+
+    d = al_create_display(ScreenWidth, ScreenHeight);
+    if(!d) {
+        error_msg("Failed to create display.\n");
+        return 3;
+    }
+
+    if(!al_install_mouse()) {
+        error_msg("Unable to initialize mouse driver.\n");
+        return 4;
+    }
+    al_register_event_source(e,al_get_display_event_source(d));   //registra o display para leitura de eventos
+    al_init_primitives_addon();
+
+    return 0;
+}
+
+void display_config(ALLEGRO_DISPLAY *d, const char *name, int x, int y)
+{
+    al_set_new_display_flags(ALLEGRO_NOFRAME);
+    al_set_window_position(d, x, y);
+    al_set_window_title(d, name);
+}
+
+void deinit(ALLEGRO_DISPLAY *&d, ALLEGRO_EVENT_QUEUE *&e)
+{
+    al_destroy_event_queue(e);
+    al_destroy_display(d);
+}
+
+int main()
+{
+    int init_status;
+
+    bool done = false;
+    Point control[] = {Point(500,25),Point(600,100),Point(350,200),Point(500,225),Point(200,245),Point(400,250)};
+    ALLEGRO_DISPLAY *display;
+    ALLEGRO_EVENT_QUEUE *events;
+    ALLEGRO_EVENT *next_event = new ALLEGRO_EVENT;
+
+    if(init_status = initialize(display,events)) return init_status;
+    display_config(display,"Teste",200,100);
+
+    draw_curve(0.01,control,point_n);
+
+    while(!done) {
+        if(!al_is_event_queue_empty(events)) {
+            al_get_next_event(events,next_event);
+            if(next_event->type == ALLEGRO_EVENT_DISPLAY_CLOSE) done = true;
+        }
+    }
+    delete next_event;
+
+    deinit(display,events);
     return 0;
 }
