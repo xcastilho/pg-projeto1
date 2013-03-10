@@ -13,3 +13,13 @@ ainda no diretório build, rode os seguintes comandos:
 
 make
 make install
+
+===========
+Instruções de uso:
+
+Clicar com o botão esquerdo do mouse adiciona pontos de controle.
+Clicar com o botão direito sobre um ponto de controle o remove.
+Clicar e arrastar pontos de controle edita a curva.
+Tab: desabilita ou habilita a visualização dos pontos de controle
+P: desabilita ou habilita a visualização da poligonal de controle
+C: desabilita ou habilita a visualização da curva
