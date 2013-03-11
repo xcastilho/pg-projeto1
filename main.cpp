@@ -1,6 +1,6 @@
 #include <cstdio>
 #include <vector>
-#include <initializer_list>
+#include <cmath>
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_native_dialog.h>
 #include <allegro5/allegro_primitives.h>
@@ -9,9 +9,8 @@
 
 #define screenHeight 600
 #define screenWidth 900
-#define windowName "teste"
+#define windowName "Projeto 1 - Processamento Gráfico"
 
-#define curve_precision 100
 #define fps 30
 #define cpoint_radius 4.0
 
@@ -19,6 +18,8 @@
 #define black al_map_rgb(0,0,0)
 #define red al_map_rgb(255,0,0)
 #define teal al_map_rgb(70,225,255)
+#define liteblue al_map_rgb(20,125,235)
+#define litegreen al_map_rgb(0,145,65)
 
 using namespace std;
 
@@ -32,6 +33,14 @@ bool modified = true;
 
 int point_n = 0;
 int ctrl_index = -1;
+float derivative_t = 0.5;
+
+int curve_precision = 10;
+
+bool increase_derivative_t = false;
+bool decrease_derivative_t = false;
+bool increase_curve_precision = false;
+bool decrease_curve_precision = false;
 
 bool polygon_visible = true;
 bool cpoints_visible = true;
@@ -40,23 +49,52 @@ bool curve_visible = true;
 Point l_interp(Point p1, Point p2, float t) {
     float xr = (1-t)*p1.x + t*p2.x;
     float yr = (1-t)*p1.y + t*p2.y;
+    if(DEBUG) printf("interpolation of (%f,%f) and (%f,%f)\n",p1.x,p1.y,p2.x,p2.y);
     return Point(xr,yr);
 }
 
 void dc_iteration(Point *control,float t, int npoints, std::vector<Point> *curve) {
     Point next;
+
     for( int i = 0; i < npoints-1; i++ ) {
-        /*al_draw_line(control[i].x,control[i].y,
-                     control[i+1].x,control[i+1].y,
-                     white,1.0F);*/
         next = l_interp(control[i],control[i+1],t);
-        //printf("interpolação %d-%d: x=%.2f, y=%.2f\n",i,i+1,next.x,next.y);
-        //if(npoints > 2) al_draw_filled_circle(next.x,next.y,2.0,white);
-        if(npoints == 2) { //trocar por else para animar
-            //al_draw_filled_circle(next.x,next.y,2.0,red);
+        if(DEBUG) printf("result = (%f,%f)\n",next.x,next.y);
+        if(npoints == 2) {
             curve->push_back(next);
         }
         control[i] = next;
+    }
+}
+
+Point get_derivative(Point* control, float t, int npoints, int order)
+{
+    std::vector<Point> *dv = new std::vector<Point>;
+    Point p;
+
+    if(order < npoints) {
+        for( unsigned int j = 0; j < order; j++ ) {
+            for( int i = 0; i < npoints-1; i++ ) {
+                control[i] = Point(control[i+1].x-control[i].x,control[i+1].y-control[i].y);
+            }
+            npoints--;
+        }
+
+        if(npoints > 1) {
+            while(npoints > 1) {
+                dc_iteration(control,t,npoints,dv);
+                npoints--;
+            }
+            p = dv->at(0);
+        } else {
+            delete dv;
+            return control[0];
+        }
+
+        delete dv;
+        return p;
+    } else {
+        delete dv;
+        return Point(0,0);
     }
 }
 
@@ -81,14 +119,24 @@ void draw_control_polygon(std::vector<Point> control, int points)
 
 void draw_curve(float step, std::vector<Point> control, int points)
 {
+    Point dc1, dc2;
+//    float unitx1, unity1, unitx2, unity2;
     int npoints = points;
     int curvepoints = 0;
     Point *ccont = new Point[points];
+    Point *vcont0 = new Point[points];
+    Point *vcont = new Point[points];
+    Point *vcont2 = new Point[points];
     std::vector<Point> *curve = new vector<Point>;
+    std::vector<Point> *dvpoint = new vector<Point>;
 
     for( float t = 0.0; t <= 1; t+=step) {
-        for(int i = 0; i < points; i++ )
+        for(int i = 0; i < points; i++ ) {
             ccont[i] = control[i];
+            vcont[i] = control[i];
+            vcont2[i] = control[i];
+            vcont0[i] = control[i];
+        }
         for( int i = 0; npoints > 1; i++, npoints--) {
             dc_iteration(ccont,t,npoints,curve);
         }
@@ -104,6 +152,37 @@ void draw_curve(float step, std::vector<Point> control, int points)
                  control[point_n-1].x,control[point_n-1].y,
                  red,2.0F);
 
+
+    for( int i = 0; npoints > 1; i++, npoints--) {
+        dc_iteration(vcont0,derivative_t,npoints,dvpoint);
+    }
+    dc1 = get_derivative(vcont, derivative_t, points, 1);
+    dc2 = get_derivative(vcont2, derivative_t, points, 2);
+    //magia negra
+/*    unitx1 = 2*sqrt(2)*(dc1.x/(dc1.x*dc1.x+dc1.y*dc1.y)) - 2*sqrt(2)*dc1.y/(dc1.x*dc1.x+dc1.y*dc1.y);
+    unity1 = 2*sqrt(2)*(dc1.x/(dc1.x*dc1.x+dc1.y*dc1.y)) + 2*sqrt(2)*dc1.y/(dc1.x*dc1.x+dc1.y*dc1.y);
+    unitx2 = 2*sqrt(2)*(dc2.x/(dc2.x*dc2.x+dc2.y*dc2.y)) - 2*sqrt(2)*dc2.y/(dc2.x*dc2.x+dc2.y*dc2.y);
+    unity2 = 2*sqrt(2)*(dc2.x/(dc2.x*dc2.x+dc2.y*dc2.y)) + 2*sqrt(2)*dc2.y/(dc2.x*dc2.x+dc2.y*dc2.y);*/
+
+    al_draw_line(dvpoint->at(0).x,dvpoint->at(0).y,
+                 dvpoint->at(0).x+dc1.x,dvpoint->at(0).y+dc1.y,
+                 liteblue,1.0F);
+/*    al_draw_line(dvpoint->at(0).x+dc1.x,dvpoint->at(0).y+dc1.y,
+                 dvpoint->at(0).x+dc1.x-500*unity1,dvpoint->at(0).y+dc1.y-500*unity1,
+                 liteblue,1.0F);
+    al_draw_line(dvpoint->at(0).x+dc1.x,dvpoint->at(0).y+dc1.y,
+                 dvpoint->at(0).x+dc1.x+500*unity1,dvpoint->at(0).y+dc1.y+500*unity1,
+                 liteblue,1.0F);*/
+    al_draw_line(dvpoint->at(0).x,dvpoint->at(0).y,
+                 dvpoint->at(0).x+dc2.x,dvpoint->at(0).y+dc2.y,
+                 litegreen,1.0F);
+/*    al_draw_line(dvpoint->at(0).x+dc1.x,dvpoint->at(0).y+dc1.y,
+                 dvpoint->at(0).x+dc1.x-500*unity2,dvpoint->at(0).y+dc1.y-500*unity2,
+                 liteblue,1.0F);
+    al_draw_line(dvpoint->at(0).x+dc1.x,dvpoint->at(0).y+dc1.y,
+                 dvpoint->at(0).x+dc1.x+500*unity2,dvpoint->at(0).y+dc1.y+500*unity2,
+                 liteblue,1.0F);*/
+
     delete[] ccont;
     delete curve;
 }
@@ -113,7 +192,7 @@ void update()
     al_clear_to_color(black);
     if(polygon_visible) draw_control_polygon(control,point_n);
     if(cpoints_visible) draw_control_points(control,point_n);
-    if(point_n >= 2 && curve_visible) draw_curve(1.0/(10*(12+point_n)),control,point_n);
+    if(point_n >= 2 && curve_visible) draw_curve(1.0/curve_precision,control,point_n);
     al_flip_display();
 }
 
@@ -232,13 +311,41 @@ void key_press(int keycode)
         case ALLEGRO_KEY_C:
             curve_visible = !curve_visible;
             break;
-    }
+        case ALLEGRO_KEY_A:
+            increase_derivative_t = true;
+            break;
+        case ALLEGRO_KEY_S:
+            decrease_derivative_t = true;
+            break;
+        case ALLEGRO_KEY_Q:
+            increase_curve_precision = true;
+            break;
+        case ALLEGRO_KEY_W:
+            decrease_curve_precision = true;
+            break;
+        }
     modified = true;
+}
+
+void key_release(int keycode)
+{
+    switch(keycode) {
+        case ALLEGRO_KEY_A:
+            increase_derivative_t = false;
+            break;
+        case ALLEGRO_KEY_S:
+            decrease_derivative_t = false;
+            break;
+        case ALLEGRO_KEY_Q:
+            increase_curve_precision = false;
+            break;
+        case ALLEGRO_KEY_W:
+            decrease_curve_precision = false;
+    }
 }
 
 void display_config(ALLEGRO_DISPLAY *d, const char *name, int x, int y)
 {
-    al_set_new_display_flags(ALLEGRO_NOFRAME);
     al_set_window_position(d, x, y);
     al_set_window_title(d, name);
 }
@@ -257,10 +364,11 @@ int main()
     ALLEGRO_DISPLAY *display;
     ALLEGRO_TIMER *timer;
     ALLEGRO_EVENT_QUEUE *events;
+    ALLEGRO_KEYBOARD_STATE *state = new ALLEGRO_KEYBOARD_STATE;
     ALLEGRO_EVENT *next_event = new ALLEGRO_EVENT;
 
     if(init_status = initialize(display,timer,events)) return init_status;
-    display_config(display,windowName,200,100);
+    display_config(display,windowName,0,0);
 
     update();
     while(!done) {
@@ -270,9 +378,15 @@ int main()
                 done = true;
                 break;
             case ALLEGRO_EVENT_TIMER:
+                if(increase_derivative_t && derivative_t < 0.99) derivative_t += 0.01;
+                if(decrease_derivative_t && derivative_t > 0.01) derivative_t -= 0.01;
+                if(increase_curve_precision && (curve_precision + 1 > curve_precision)) curve_precision += 1;
+                if(decrease_curve_precision && (curve_precision > 1)) curve_precision -= 1;
                 if(modified) {
+                    al_get_keyboard_state(state);
+                    if((!al_key_down(state,ALLEGRO_KEY_A)) && (!al_key_down(state,ALLEGRO_KEY_S))
+                    && (!al_key_down(state,ALLEGRO_KEY_W)) && (!al_key_down(state,ALLEGRO_KEY_Q))) modified = false;
                     update();
-                    modified = false;
                 }
                 break;
             case ALLEGRO_EVENT_MOUSE_BUTTON_DOWN:
@@ -287,10 +401,14 @@ int main()
             case ALLEGRO_EVENT_KEY_DOWN:
                 key_press(next_event->keyboard.keycode);
                 break;
+            case ALLEGRO_EVENT_KEY_UP:
+                key_release(next_event->keyboard.keycode);
+                break;
         }
     }
 
 
+    delete state;
     delete next_event;
     deinit(display,timer,events);
     return 0;
