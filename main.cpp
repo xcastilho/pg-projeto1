@@ -35,7 +35,7 @@ int point_n = 0;
 int ctrl_index = -1;
 float derivative_t = 0.5;
 
-int curve_precision = 10;
+int curve_precision = 50;
 
 bool increase_derivative_t = false;
 bool decrease_derivative_t = false;

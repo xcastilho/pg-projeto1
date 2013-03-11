@@ -34,7 +34,7 @@ P: desabilita ou habilita a visualização da poligonal de controle
 C: desabilita ou habilita a visualização da curva
 Q: aumenta o número de avaliações (segurar aumenta rapidamente)
 W: reduz o número de avaliações (segurar reduz rapidamente)
-Quando o programa é inicializado, o número de avaliações é 10.
+Quando o programa é inicializado, o número de avaliações é 50.
 A: aumenta o valor de t para o qual as derivadas serão avaliadas
 S: diminui o valor de t para o qual as derivadas serão avaliadas
 Quando o programa é inicializado, as derivadas são calculadas para t = 0.5
