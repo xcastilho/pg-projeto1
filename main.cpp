@@ -1,9 +1,11 @@
 #include <cstdio>
 #include <vector>
-#include <cmath>
+//#include <cmath>
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_native_dialog.h>
 #include <allegro5/allegro_primitives.h>
+#include <allegro5/allegro_font.h>
+#include <allegro5/allegro_ttf.h>
 
 #define DEBUG 0             //mudar para 1 ativa as mensagens de debug
 
@@ -31,9 +33,18 @@ struct Point {
 std::vector<Point> control = vector<Point>();
 bool modified = true;
 
+ALLEGRO_FONT *font;
+
 int point_n = 0;
 int ctrl_index = -1;
 float derivative_t = 0.5;
+
+float dvx = 0;
+float dvy = 0;
+float dc1x = 0;
+float dc1y = 0;
+float dc2x = 0;
+float dc2y = 0;
 
 int curve_precision = 50;
 
@@ -130,6 +141,7 @@ void draw_curve(float step, std::vector<Point> control, int points)
     std::vector<Point> *curve = new vector<Point>;
     std::vector<Point> *dvpoint = new vector<Point>;
 
+
     for( float t = 0.0; t <= 1; t+=step) {
         for(int i = 0; i < points; i++ ) {
             ccont[i] = control[i];
@@ -182,6 +194,12 @@ void draw_curve(float step, std::vector<Point> control, int points)
     al_draw_line(dvpoint->at(0).x+dc1.x,dvpoint->at(0).y+dc1.y,
                  dvpoint->at(0).x+dc1.x+500*unity2,dvpoint->at(0).y+dc1.y+500*unity2,
                  liteblue,1.0F);*/
+    dvx = dvpoint->at(0).x;
+    dvy = dvpoint->at(0).y;
+    dc1x = dc1.x;
+    dc1y = dc1.y;
+    dc2x = dc2.x;
+    dc2y = dc2.y;
 
     delete[] ccont;
     delete curve;
@@ -193,6 +211,11 @@ void update()
     if(polygon_visible) draw_control_polygon(control,point_n);
     if(cpoints_visible) draw_control_points(control,point_n);
     if(point_n >= 2 && curve_visible) draw_curve(1.0/curve_precision,control,point_n);
+    al_draw_textf(font,white,10,10,0,"t = %.2f",derivative_t);
+    al_draw_textf(font,white,10,20,0,"p = (%.2f,%.2f)",dvx,dvy);
+    al_draw_textf(font,white,10,30,0,"d1 = (%.2f,%.2f)",dc1x,dc1y);
+    al_draw_textf(font,white,10,40,0,"d2 = (%.2f,%.2f)",dc2x,dc2y);
+    al_draw_textf(font,white,10,50,0,"av = %d",curve_precision);
     al_flip_display();
 }
 
@@ -241,6 +264,7 @@ int initialize(ALLEGRO_DISPLAY *&d, ALLEGRO_TIMER *&t, ALLEGRO_EVENT_QUEUE *&e)
         return 6;
     }
 
+    al_init_font_addon();
     al_register_event_source(e,al_get_display_event_source(d));   //registra o display para leitura de eventos
     al_register_event_source(e,al_get_timer_event_source(t));     //registra o timer para leitura de eventos
     al_register_event_source(e,al_get_keyboard_event_source());   //registra o teclado para leitura de eventos
@@ -369,6 +393,8 @@ int main()
 
     if(init_status = initialize(display,timer,events)) return init_status;
     display_config(display,windowName,0,0);
+
+    font = al_create_builtin_font();
 
     update();
     while(!done) {

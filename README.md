@@ -49,3 +49,18 @@ Linha azul-clara: Poligonal de controle
 Linha azul: Vetor da primeira derivada
 Linha verde: Vetor da segunda derivada
 Pontos brancos: Pontos de controle
+
+Valores em tela:
+
+t = valor do parâmetro no qual as derivadas são desenhadas
+p = ponto no qual os vetores das derivadas são desenhados
+d1 = vetor da primeira derivada
+d2 = vetor da segunda derivada
+av = número de avaliações da curva
+
+============
+
+Notas:
+
+No sistema de coordenadas utilizado, x cresce para a direita e y para baixo.
+O canto superior esquerdo da tela é considerado (0,0).
